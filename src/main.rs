@@ -1,23 +1,18 @@
 use serde::Deserialize;
-use std::fs::File;
+use std::{collections::HashSet, fs::File};
 
 fn main() {
-    println!("Hello, world!");
     let minos: Vec<Mino> = serde_json::from_reader(File::open("data/minos.json").unwrap()).unwrap();
-    minos
-        .iter()
-        .for_each(|mino| println!("mino: {:?}", mino.name));
     let mut board: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
-    board.print_shape();
-    minos[0].print_shape();
     let t = TransForm {
         x: 1,
         y: 1,
-        rotation: Rotation::Neutral,
+        rotation: Rotation::Right,
     };
-    println!("{:?}", board.can_put(&minos[0], &t));
+    println!("{}", board.pretty_shape());
+    println!("------------");
     board.put_mino(minos[0].clone(), t);
-    board.print_shape();
+    println!("{}", board.pretty_shape());
 }
 
 #[derive(Deserialize)]
@@ -32,18 +27,18 @@ impl Board {
             let y = transform.y + mino_y;
             line.iter().enumerate().all(|(mino_x, &b)| {
                 let x = transform.x + mino_x;
-                println!("b: {}", b);
-                println!(
-                    "x: {}, y: {}, board[{}][{}]: {}",
-                    x, y, y, x, self.shape[y][x]
-                );
+                // println!("b: {}", b);
+                // println!(
+                //     "x: {}, y: {}, board[{}][{}]: {}",
+                //     x, y, y, x, self.shape[y][x]
+                // );
                 !(self.shape[y][x] && b)
             })
         })
     }
 
     fn put_mino(&mut self, mino: Mino, transform: TransForm) {
-        mino.shape.iter().enumerate().for_each(|(mino_y, line)| {
+        mino.rotated(&transform.rotation).shape.iter().enumerate().for_each(|(mino_y, line)| {
             let y = transform.y + mino_y;
             line.iter().enumerate().for_each(|(mino_x, &b)| {
                 let x = transform.x + mino_x;
@@ -52,9 +47,8 @@ impl Board {
         });
         self.mino_transforms.push((mino, transform));
     }
-    fn print_shape(&self) {
+    fn pretty_shape(&self) -> String {
         let mut char_matrix = vec![vec!['.'; self.shape[0].len()]; self.shape.len()];
-        println!("------------");
         self.shape.iter().enumerate().for_each(|(y, bs)| {
             bs.iter().enumerate().for_each(|(x, &b)| {
                 if b {
@@ -63,7 +57,7 @@ impl Board {
             });
         });
         for (mino, transform) in &self.mino_transforms {
-            mino.shape.iter().enumerate().for_each(|(mino_y, line)| {
+            mino.rotated(&transform.rotation).shape.iter().enumerate().for_each(|(mino_y, line)| {
                 let y = transform.y + mino_y;
                 line.iter().enumerate().for_each(|(mino_x, &b)| {
                     let x = transform.x + mino_x;
@@ -75,8 +69,9 @@ impl Board {
         }
         char_matrix
             .iter()
-            .for_each(|cs| println!("{}", cs.iter().collect::<String>()));
-        println!("------------");
+            .map(|cs| cs.iter().collect::<String>())
+            .collect::<Vec<String>>()
+            .join("\n")
     }
 }
 
@@ -161,12 +156,18 @@ impl Mino {
 
 impl Mino {
     fn from_str(s: &str) -> Self {
+        let mut cs: HashSet<char> = s.trim().chars().collect();
+        cs.remove(&'.');
+        cs.remove(&'\n');
+        println!("{:?}", cs);
+        assert_eq!(cs.len(), 1);
+        let name = cs.into_iter().collect::<Vec<char>>()[0];
         Self {
-            name: '-',
+            name: name,
             shape: s
                 .lines()
                 .filter(|l| !l.is_empty())
-                .map(|l| l.chars().map(|c| c == '#').collect())
+                .map(|l| l.chars().map(|c| c != '.').collect())
                 .collect(),
         }
     }
@@ -216,4 +217,52 @@ fn test_mino_rotated_one_eighty() {
         mino.rotated(&Rotation::OneEighty),
         Mino::from_str("#..\n###")
     );
+}
+
+#[test]
+fn test_put_mino() {
+    let mut board: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
+    let mino = Mino::from_str("a.
+aa
+aa
+aa");
+    let t = TransForm {
+        x: 1,
+        y: 1,
+        rotation: Rotation::Neutral,
+    };
+    assert!(board.can_put(&mino, &t));
+    let expected = "####...
+#a.....
+.aa....
+.aa...#
+.aa...#
+......#
+#...###";
+    board.put_mino(mino, t);
+    assert_eq!(board.pretty_shape(), expected);
+}
+
+#[test]
+fn test_put_rotated_mino() {
+    let mut board: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
+    let mino = Mino::from_str("a.
+aa
+aa
+aa");
+    let t = TransForm {
+        x: 1,
+        y: 1,
+        rotation: Rotation::Right,
+    };
+    assert!(board.can_put(&mino, &t));
+    let expected = "####...
+#aaaa..
+.aaa...
+......#
+......#
+......#
+#...###";
+    board.put_mino(mino, t);
+    assert_eq!(board.pretty_shape(), expected);
 }
