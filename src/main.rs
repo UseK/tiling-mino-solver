@@ -91,17 +91,61 @@ struct TransForm {
 enum Rotation {
     Neutral,
     Left,
-    OneEighty,
     Right,
+    OneEighty,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, PartialEq, Eq, Debug)]
 struct Mino {
     name: char,
     shape: Vec<Vec<bool>>,
 }
 
 impl Mino {
+    fn height(&self) -> usize {
+        self.shape.len()
+    }
+    fn width(&self) -> usize {
+        self.shape[0].len()
+    }
+    fn rotated(&self, rotation: &Rotation) -> Self {
+        let new_shape = match rotation {
+            Rotation::Neutral => self.shape.clone(),
+            Rotation::Left => {
+                let mut right_shape = vec![vec![false; self.height()]; self.width()];
+                for y in 0..self.height() {
+                    for x in 0..self.width() {
+                        right_shape[self.width() - x - 1][y] = self.shape[y][x];
+                    }
+                }
+                right_shape
+            }
+            Rotation::Right => {
+                let mut left_shape = vec![vec![false; self.height()]; self.width()];
+                for y in 0..self.height() {
+                    for x in 0..self.width() {
+                        left_shape[x][self.height() - y - 1] = self.shape[y][x];
+                    }
+                }
+                left_shape
+            }
+            Rotation::OneEighty => {
+                let mut one_eighty_shape = vec![vec![false; self.width()]; self.height()];
+                for y in 0..self.height() {
+                    for x in 0..self.width() {
+                        one_eighty_shape[self.height() - y - 1][self.width() - x - 1] =
+                            self.shape[y][x];
+                    }
+                }
+                one_eighty_shape
+            }
+        };
+        Self {
+            shape: new_shape,
+            name: self.name,
+        }
+    }
+
     fn print_shape(&self) {
         println!("------------");
         self.shape.iter().for_each(|bools| {
@@ -128,18 +172,48 @@ impl Mino {
     }
 }
 
-const A: &str = "
-###
-.##
-";
-
-const B: &str = "11";
-
 #[test]
 fn test_mino_from_str() {
-    let mino = Mino::from_str(A);
+    let mino = Mino::from_str("###\n.##");
     assert_eq!(
         mino.shape,
         vec![vec![true, true, true], vec![false, true, true]]
-    )
+    );
+    assert_eq!(mino.height(), 2);
+    assert_eq!(mino.width(), 3);
+}
+
+#[test]
+fn test_mino_rotated_left() {
+    // ###
+    // ..#
+    let mino = Mino::from_str("###\n..#");
+    // ##
+    // #.
+    // #.
+    assert_eq!(mino.rotated(&Rotation::Left), Mino::from_str("##\n#.\n#."));
+}
+
+#[test]
+fn test_mino_rotated_right() {
+    // ###
+    // ..#
+    let mino = Mino::from_str("###\n..#");
+    // .#
+    // .#
+    // ##
+    assert_eq!(mino.rotated(&Rotation::Right), Mino::from_str(".#\n.#\n##"));
+}
+
+#[test]
+fn test_mino_rotated_one_eighty() {
+    // ###
+    // ..#
+    let mino = Mino::from_str("###\n..#");
+    // #..
+    // ###
+    assert_eq!(
+        mino.rotated(&Rotation::OneEighty),
+        Mino::from_str("#..\n###")
+    );
 }
