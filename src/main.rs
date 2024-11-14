@@ -4,24 +4,47 @@ use std::{collections::HashSet, fs::File};
 fn main() {
     let minos: Vec<Mino> = serde_json::from_reader(File::open("data/minos.json").unwrap()).unwrap();
     let mut board: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
-    let t = TransForm {
-        x: 1,
-        y: 1,
-        rotation: Rotation::Right,
-    };
-    println!("{}", board.pretty_shape());
     println!("------------");
-    board.put_mino(minos[0].clone(), t);
-    println!("{}", board.pretty_shape());
+    let ts = board.search_can_put(&minos[0], &Rotation::Right);
+    println!("{}", ts.len());
+    for t in ts {
+        let mut new = board.clone();
+        new.put_mino(minos[0].clone(), t);
+        println!("{}", new.pretty_shape());
+        println!("-----------");
+    }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 struct Board {
     shape: Vec<Vec<bool>>,
     mino_transforms: Vec<(Mino, TransForm)>,
 }
 
 impl Board {
+    fn height(&self) -> usize {
+        self.shape.len()
+    }
+    fn width(&self) -> usize {
+        self.shape[0].len()
+    }
+    fn search_can_put(&self, mino: &Mino, rotation: &Rotation) -> Vec<TransForm> {
+        let rotated_mino = mino.rotated(rotation);
+        let mut transforms = vec![];
+        for y in 0..=self.height() - rotated_mino.height() {
+            for x in 0..=self.width() - rotated_mino.width() {
+                let t = TransForm {
+                    x,
+                    y,
+                    rotation: rotation.clone(),
+                };
+                if self.can_put(&rotated_mino, &t) {
+                    transforms.push(t);
+                }
+            }
+        }
+        transforms
+    }
     fn can_put(&self, mino: &Mino, transform: &TransForm) -> bool {
         mino.shape.iter().enumerate().all(|(mino_y, line)| {
             let y = transform.y + mino_y;
@@ -38,13 +61,17 @@ impl Board {
     }
 
     fn put_mino(&mut self, mino: Mino, transform: TransForm) {
-        mino.rotated(&transform.rotation).shape.iter().enumerate().for_each(|(mino_y, line)| {
-            let y = transform.y + mino_y;
-            line.iter().enumerate().for_each(|(mino_x, &b)| {
-                let x = transform.x + mino_x;
-                self.shape[y][x] = b;
+        mino.rotated(&transform.rotation)
+            .shape
+            .iter()
+            .enumerate()
+            .for_each(|(mino_y, line)| {
+                let y = transform.y + mino_y;
+                line.iter().enumerate().for_each(|(mino_x, &b)| {
+                    let x = transform.x + mino_x;
+                    self.shape[y][x] |= b;
+                });
             });
-        });
         self.mino_transforms.push((mino, transform));
     }
     fn pretty_shape(&self) -> String {
@@ -57,15 +84,19 @@ impl Board {
             });
         });
         for (mino, transform) in &self.mino_transforms {
-            mino.rotated(&transform.rotation).shape.iter().enumerate().for_each(|(mino_y, line)| {
-                let y = transform.y + mino_y;
-                line.iter().enumerate().for_each(|(mino_x, &b)| {
-                    let x = transform.x + mino_x;
-                    if b {
-                        char_matrix[y][x] = mino.name;
-                    }
+            mino.rotated(&transform.rotation)
+                .shape
+                .iter()
+                .enumerate()
+                .for_each(|(mino_y, line)| {
+                    let y = transform.y + mino_y;
+                    line.iter().enumerate().for_each(|(mino_x, &b)| {
+                        let x = transform.x + mino_x;
+                        if b {
+                            char_matrix[y][x] = mino.name;
+                        }
+                    });
                 });
-            });
         }
         char_matrix
             .iter()
@@ -222,10 +253,12 @@ fn test_mino_rotated_one_eighty() {
 #[test]
 fn test_put_mino() {
     let mut board: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
-    let mino = Mino::from_str("a.
+    let mino = Mino::from_str(
+        "a.
 aa
 aa
-aa");
+aa",
+    );
     let t = TransForm {
         x: 1,
         y: 1,
@@ -246,10 +279,12 @@ aa");
 #[test]
 fn test_put_rotated_mino() {
     let mut board: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
-    let mino = Mino::from_str("a.
+    let mino = Mino::from_str(
+        "a.
 aa
 aa
-aa");
+aa",
+    );
     let t = TransForm {
         x: 1,
         y: 1,
