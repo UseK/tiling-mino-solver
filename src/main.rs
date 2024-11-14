@@ -5,7 +5,7 @@ fn main() {
     let minos: Vec<Mino> = serde_json::from_reader(File::open("data/minos.json").unwrap()).unwrap();
     let mut board: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
     println!("------------");
-    let ts = board.search_can_put(&minos[0], &Rotation::Right);
+    let ts = board.search_can_put(&minos[0]);
     println!("{}", ts.len());
     for t in ts {
         let mut new = board.clone();
@@ -28,8 +28,19 @@ impl Board {
     fn width(&self) -> usize {
         self.shape[0].len()
     }
-    fn search_can_put(&self, mino: &Mino, rotation: &Rotation) -> Vec<TransForm> {
-        let rotated_mino = mino.rotated(rotation);
+    fn search_can_put(&self, mino: &Mino) -> Vec<TransForm> {
+        let mut transforms = vec![];
+        for r in [
+            Rotation::Neutral,
+            Rotation::Left,
+            Rotation::Right,
+            Rotation::OneEighty,
+        ] {
+            transforms.extend(self.search_can_put_rotated(&mino.rotated(&r), &r));
+        }
+        transforms
+    }
+    fn search_can_put_rotated(&self, rotated_mino: &Mino, rotation: &Rotation) -> Vec<TransForm> {
         let mut transforms = vec![];
         for y in 0..=self.height() - rotated_mino.height() {
             for x in 0..=self.width() - rotated_mino.width() {
