@@ -62,7 +62,7 @@ impl Board {
                     y,
                     rotation: rotation.clone(),
                 };
-                if self.can_put(&rotated_mino, &t) {
+                if self.can_put(rotated_mino, &t) {
                     transforms.push(t);
                 }
             }
@@ -218,7 +218,7 @@ impl Mino {
         assert_eq!(cs.len(), 1);
         let name = cs.into_iter().collect::<Vec<char>>()[0];
         Self {
-            name: name,
+            name,
             shape: s
                 .lines()
                 .filter(|l| !l.is_empty())
