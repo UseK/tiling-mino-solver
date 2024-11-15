@@ -12,6 +12,15 @@ fn main() {
         new.put_mino(minos[0].clone(), t);
         println!("{}", new.pretty_shape());
         println!("-----------");
+        let ts2 = new.search_can_put(&minos[1]);
+        println!("ts2.len(): {}", ts2.len());
+        for t2 in ts2 {
+            let mut nn = new.clone();
+            nn.put_mino(minos[1].clone(), t2);
+            println!("{}", nn.pretty_shape());
+            println!("-----------");
+
+        }
     }
 }
 
