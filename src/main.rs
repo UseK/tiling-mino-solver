@@ -2,11 +2,11 @@ use serde::Deserialize;
 use std::{collections::HashSet, fs::File, io::Read, path::Path};
 
 fn main() {
-    let minos: Vec<Mino> = serde_json::from_reader(File::open("data/minos.json").unwrap()).unwrap();
+    let minos: Vec<Mino> = Mino::minos_from_text_path("data/minos.txt");
     for m in &minos {
         m.print_shape();
     }
-    let board: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
+    let board = Board::from_text_path("data/board.txt");
     println!("{}", board.pretty_shape());
 
     let tiled = board.tile(&minos);
@@ -227,6 +227,24 @@ impl Mino {
         });
         println!("------------");
     }
+
+    fn minos_from_text_path<P>(p: P) -> Vec<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let mut buf = "".to_string();
+        File::open(p).unwrap().read_to_string(&mut buf).unwrap();
+        let lines: Vec<String> = buf.lines().map(|s| s.to_string()).collect();
+        lines
+            .split(|line| line.contains('-'))
+            .map(|block| {
+                let s: String = block.join("\n");
+                println!("{:?}", s);
+
+                Mino::from_str(&s)
+            })
+            .collect()
+    }
 }
 
 impl Mino {
@@ -234,7 +252,6 @@ impl Mino {
         let mut cs: HashSet<char> = s.trim().chars().collect();
         cs.remove(&'.');
         cs.remove(&'\n');
-        println!("{:?}", cs);
         assert_eq!(cs.len(), 1);
         let name = cs.into_iter().collect::<Vec<char>>()[0];
         Self {
@@ -351,4 +368,16 @@ fn test_board_from_text_path() {
     let board = Board::from_text_path("data/board.txt");
     let expected: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
     assert_eq!(board, expected);
+}
+
+#[test]
+fn test_minos_from_text_path() {
+    let minos = Mino::minos_from_text_path("data/minos.txt");
+    println!("readed!");
+    for m in &minos {
+        m.print_shape();
+    }
+    let expected: Vec<Mino> =
+        serde_json::from_reader(File::open("data/minos.json").unwrap()).unwrap();
+    assert_eq!(minos, expected);
 }
