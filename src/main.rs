@@ -3,28 +3,12 @@ use std::{collections::HashSet, fs::File};
 
 fn main() {
     let minos: Vec<Mino> = serde_json::from_reader(File::open("data/minos.json").unwrap()).unwrap();
-    let mut board: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
-    println!("------------");
-    let ts = board.search_can_put(&minos[0]);
-    println!("{}", ts.len());
-    for t in ts {
-        let mut new = board.clone();
-        new.put_mino(minos[0].clone(), t);
-        println!("{}", new.pretty_shape());
-        println!("-----------");
-        let ts2 = new.search_can_put(&minos[1]);
-        println!("ts2.len(): {}", ts2.len());
-        for t2 in ts2 {
-            let mut nn = new.clone();
-            nn.put_mino(minos[1].clone(), t2);
-            println!("{}", nn.pretty_shape());
-            println!("-----------");
-
-        }
-    }
+    let board: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
+    let tiled = board.tile(&minos);
+    println!("{}", tiled.unwrap().pretty_shape());
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 struct Board {
     shape: Vec<Vec<bool>>,
     mino_transforms: Vec<(Mino, TransForm)>,
@@ -36,6 +20,26 @@ impl Board {
     }
     fn width(&self) -> usize {
         self.shape[0].len()
+    }
+    fn tile(&self, minos: &[Mino]) -> Option<Self> {
+        if minos.is_empty() {
+            return Some(self.clone());
+        }
+        let head_mino = minos[0].clone();
+        let ts = self.search_can_put(&head_mino);
+        if ts.is_empty() {
+            None
+        } else {
+            for t in ts {
+                let mut new_board = self.clone();
+                new_board.put_mino(head_mino.clone(), t);
+                let tiled = new_board.tile(&minos[1..]);
+                if tiled.is_some() {
+                    return tiled;
+                }
+            }
+            None
+        }
     }
     fn search_can_put(&self, mino: &Mino) -> Vec<TransForm> {
         let mut transforms = vec![];
@@ -126,14 +130,14 @@ impl Board {
     }
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 struct TransForm {
     x: usize,
     y: usize,
     rotation: Rotation,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 enum Rotation {
     Neutral,
     Left,
