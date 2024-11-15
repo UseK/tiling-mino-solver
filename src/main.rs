@@ -1,20 +1,40 @@
 use serde::Deserialize;
-use std::{collections::HashSet, fs::File};
+use std::{collections::HashSet, fs::File, io::Read, path::Path};
 
 fn main() {
     let minos: Vec<Mino> = serde_json::from_reader(File::open("data/minos.json").unwrap()).unwrap();
+    for m in &minos {
+        m.print_shape();
+    }
     let board: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
+    println!("{}", board.pretty_shape());
+
     let tiled = board.tile(&minos);
     println!("{}", tiled.unwrap().pretty_shape());
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
 struct Board {
     shape: Vec<Vec<bool>>,
     mino_transforms: Vec<(Mino, TransForm)>,
 }
 
 impl Board {
+    fn from_text_path<P>(path: P) -> Self
+    where
+        P: AsRef<Path>,
+    {
+        let mut buf = "".to_string();
+        File::open(path).unwrap().read_to_string(&mut buf).unwrap();
+        let shape: Vec<Vec<bool>> = buf
+            .lines()
+            .map(|line| line.chars().map(|c| c == '#').collect::<Vec<bool>>())
+            .collect();
+        Self {
+            shape,
+            mino_transforms: vec![],
+        }
+    }
     fn height(&self) -> usize {
         self.shape.len()
     }
@@ -130,14 +150,14 @@ impl Board {
     }
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, PartialEq, Eq, Debug)]
 struct TransForm {
     x: usize,
     y: usize,
     rotation: Rotation,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, PartialEq, Eq, Debug)]
 enum Rotation {
     Neutral,
     Left,
@@ -324,4 +344,11 @@ aa",
 #...###";
     board.put_mino(mino, t);
     assert_eq!(board.pretty_shape(), expected);
+}
+
+#[test]
+fn test_board_from_text_path() {
+    let board = Board::from_text_path("data/board.txt");
+    let expected: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
+    assert_eq!(board, expected);
 }
