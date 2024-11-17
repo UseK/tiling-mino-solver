@@ -276,11 +276,10 @@ impl Mino {
         let lines: Vec<String> = buf.lines().map(|s| s.to_string()).collect();
         lines
             .split(|line| line.contains('-'))
-            .map(|block| {
-                let s: String = block.join("\n");
-                println!("{:?}", s);
-
-                Mino::from_str(&s)
+            .flat_map(|block| {
+                let count = block[0].parse::<usize>().unwrap();
+                let s: String = block[1..].join("\n");
+                vec![Mino::from_str(&s); count]
             })
             .collect()
     }
