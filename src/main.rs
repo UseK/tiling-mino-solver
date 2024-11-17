@@ -1,5 +1,11 @@
+use ansi_term::Color;
 use serde::Deserialize;
-use std::{collections::HashSet, fs::File, io::Read, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    fs::File,
+    io::Read,
+    path::Path,
+};
 
 fn main() {
     let minos: Vec<Mino> = Mino::minos_from_text_path("data/minos.txt");
@@ -10,7 +16,7 @@ fn main() {
     println!("{}", board.pretty_shape());
 
     let tiled = board.tile(&minos);
-    println!("{}", tiled.unwrap().pretty_shape());
+    tiled.unwrap().pretty_print();
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -117,6 +123,35 @@ impl Board {
                 });
             });
         self.mino_transforms.push((mino, transform));
+    }
+    const MINO_COLORS: [Color; 6] = [
+        Color::Blue,
+        Color::Cyan,
+        Color::Green,
+        Color::Purple,
+        Color::Red,
+        Color::Yellow,
+    ];
+    fn pretty_print(&self) {
+        let mino_chars: HashMap<char, Color> = self
+            .mino_transforms
+            .iter()
+            .enumerate()
+            .map(|(ind, t)| {
+                (
+                    t.0.name,
+                    if ind < 6 {
+                        Self::MINO_COLORS[ind]
+                    } else {
+                        Color::White
+                    },
+                )
+            })
+            .collect();
+        for c in self.pretty_shape().chars() {
+            let color = mino_chars.get(&c).unwrap_or(&Color::White);
+            print!("{}", color.paint(c.to_string()));
+        }
     }
     fn pretty_shape(&self) -> String {
         let mut char_matrix = vec![vec!['.'; self.shape[0].len()]; self.shape.len()];
