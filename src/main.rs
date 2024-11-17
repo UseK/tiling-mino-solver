@@ -149,8 +149,12 @@ impl Board {
             })
             .collect();
         for c in self.pretty_shape().chars() {
-            let color = mino_chars.get(&c).unwrap_or(&Color::White);
-            print!("{}", color.paint(c.to_string()));
+            if c == '#' {
+                print!("{}", Color::Black.on(Color::White).paint(c.to_string()));
+            } else {
+                let color = mino_chars.get(&c).unwrap_or(&Color::White);
+                print!("{}", color.paint(c.to_string()));
+            }
         }
     }
     fn pretty_shape(&self) -> String {
