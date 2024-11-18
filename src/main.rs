@@ -2,19 +2,21 @@ use ansi_term::Color;
 use serde::Deserialize;
 use std::{
     collections::{HashMap, HashSet},
+    env,
     fs::File,
     io::Read,
     path::Path,
 };
 
 fn main() {
-    let minos: Vec<Mino> = Mino::minos_from_text_path("data/minos.txt");
-    for m in &minos {
-        m.print_shape();
-    }
-    let board = Board::from_text_path("data/board.txt");
-    println!("{}", board.pretty_shape());
-
+    let args: Vec<String> = env::args().collect();
+    let (minos_path, board_path) = if args.len() == 3 {
+        (args[1].clone(), args[2].clone())
+    } else {
+        ("data/minos.txt".to_string(), "data/board.txt".to_string())
+    };
+    let minos: Vec<Mino> = Mino::minos_from_text_path(minos_path);
+    let board = Board::from_text_path(board_path);
     let tiled = board.tile(&minos);
     tiled.unwrap().pretty_print();
 }
@@ -254,19 +256,6 @@ impl Mino {
             name: self.name,
         }
     }
-
-    fn print_shape(&self) {
-        println!("------------");
-        self.shape.iter().for_each(|bools| {
-            let line = bools
-                .iter()
-                .map(|&b| if b { self.name } else { '.' })
-                .collect::<String>();
-            println!("{}", line)
-        });
-        println!("------------");
-    }
-
     fn minos_from_text_path<P>(p: P) -> Vec<Self>
     where
         P: AsRef<Path>,
@@ -413,7 +402,18 @@ fn test_minos_from_text_path() {
     let minos = Mino::minos_from_text_path("data/minos.txt");
     println!("readed!");
     for m in &minos {
-        m.print_shape();
+        {
+            let this = &m;
+            println!("------------");
+            this.shape.iter().for_each(|bools| {
+                let line = bools
+                    .iter()
+                    .map(|&b| if b { this.name } else { '.' })
+                    .collect::<String>();
+                println!("{}", line)
+            });
+            println!("------------");
+        };
     }
     let expected: Vec<Mino> =
         serde_json::from_reader(File::open("data/minos.json").unwrap()).unwrap();
