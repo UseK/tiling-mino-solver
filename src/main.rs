@@ -17,6 +17,12 @@ fn main() {
     };
     let minos: Vec<Mino> = Mino::minos_from_text_path(minos_path);
     let board = Board::from_text_path(board_path);
+    let count_mino_walls = minos
+        .iter()
+        .map(|mino| mino.shape.count_wall())
+        .reduce(|a, b| a + b)
+        .unwrap();
+    assert_eq!(count_mino_walls, board.shape.count_vacant(), "the number of walls is different");
     let tiled = board.tile(&minos);
     tiled.unwrap().pretty_print();
 }
@@ -221,6 +227,20 @@ impl Shape {
     }
     fn is_wall(&self, x: usize, y: usize) -> bool {
         self.0[y][x]
+    }
+    fn count_wall(&self) -> usize {
+        let mut count = 0;
+        for y in 0..self.height() {
+            for x in 0..self.width() {
+                if self.is_wall(x, y) {
+                    count += 1;
+                }
+            }
+        }
+        count
+    }
+    fn count_vacant(&self) -> usize {
+        self.width() * self.height() - self.count_wall()
     }
     fn put_on(&mut self, x: usize, y: usize, b: bool) {
         self.0[y][x] |= b;
