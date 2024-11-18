@@ -23,7 +23,7 @@ fn main() {
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
 struct Board {
-    shape: Vec<Vec<bool>>,
+    shape: Shape,
     mino_transforms: Vec<(Mino, TransForm)>,
 }
 
@@ -34,20 +34,19 @@ impl Board {
     {
         let mut buf = "".to_string();
         File::open(path).unwrap().read_to_string(&mut buf).unwrap();
-        let shape: Vec<Vec<bool>> = buf
-            .lines()
-            .map(|line| line.chars().map(|c| c == '#').collect::<Vec<bool>>())
-            .collect();
         Self {
-            shape,
+            shape: Shape::from_str(&buf),
             mino_transforms: vec![],
         }
     }
     fn height(&self) -> usize {
-        self.shape.len()
+        self.shape.height()
     }
     fn width(&self) -> usize {
-        self.shape[0].len()
+        self.shape.width()
+    }
+    fn is_wall(&self, x: usize, y: usize) -> bool {
+        self.shape.is_wall(x, y)
     }
     fn tile(&self, minos: &[Mino]) -> Option<Self> {
         if minos.is_empty() {
@@ -102,12 +101,7 @@ impl Board {
             let y = transform.y + mino_y;
             line.iter().enumerate().all(|(mino_x, &b)| {
                 let x = transform.x + mino_x;
-                // println!("b: {}", b);
-                // println!(
-                //     "x: {}, y: {}, board[{}][{}]: {}",
-                //     x, y, y, x, self.shape[y][x]
-                // );
-                !(self.shape[y][x] && b)
+                !(self.is_wall(x, y) && b)
             })
         })
     }
@@ -121,7 +115,7 @@ impl Board {
                 let y = transform.y + mino_y;
                 line.iter().enumerate().for_each(|(mino_x, &b)| {
                     let x = transform.x + mino_x;
-                    self.shape[y][x] |= b;
+                    self.shape.put_on(x, y, b);
                 });
             });
         self.mino_transforms.push((mino, transform));
@@ -160,13 +154,11 @@ impl Board {
         }
     }
     fn pretty_shape(&self) -> String {
-        let mut char_matrix = vec![vec!['.'; self.shape[0].len()]; self.shape.len()];
-        self.shape.iter().enumerate().for_each(|(y, bs)| {
-            bs.iter().enumerate().for_each(|(x, &b)| {
-                if b {
-                    char_matrix[y][x] = '#'
-                }
-            });
+        let mut char_matrix = vec![vec!['.'; self.width()]; self.height()];
+        self.shape.coordinates().into_iter().for_each(|(x, y, b)| {
+            if b {
+                char_matrix[y][x] = '#'
+            }
         });
         for (mino, transform) in &self.mino_transforms {
             mino.rotated(&transform.rotation)
@@ -210,6 +202,40 @@ enum Rotation {
 struct Mino {
     name: char,
     shape: Vec<Vec<bool>>,
+}
+
+#[derive(Deserialize, Clone, PartialEq, Eq, Debug)]
+struct Shape(Vec<Vec<bool>>);
+
+impl Shape {
+    fn from_str(s: &str) -> Self {
+        Self(
+            s.lines()
+                .map(|line| line.chars().map(|c| c != '.').collect::<Vec<bool>>())
+                .collect(),
+        )
+    }
+    fn width(&self) -> usize {
+        self.0[0].len()
+    }
+    fn height(&self) -> usize {
+        self.0.len()
+    }
+    fn is_wall(&self, x: usize, y: usize) -> bool {
+        self.0[y][x]
+    }
+    fn put_on(&mut self, x: usize, y: usize, b: bool) {
+        self.0[y][x] |= b;
+    }
+    fn coordinates(&self) -> Vec<(usize, usize, bool)> {
+        let mut vs = vec![];
+        for y in 0..self.height() {
+            for x in 0..self.width() {
+                vs.push((x, y, self.is_wall(x, y)))
+            }
+        }
+        vs
+    }
 }
 
 impl Mino {
@@ -272,9 +298,6 @@ impl Mino {
             })
             .collect()
     }
-}
-
-impl Mino {
     fn from_str(s: &str) -> Self {
         let mut cs: HashSet<char> = s.trim().chars().collect();
         cs.remove(&'.');
