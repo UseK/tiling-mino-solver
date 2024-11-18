@@ -97,26 +97,25 @@ impl Board {
         transforms
     }
     fn can_put(&self, mino: &Mino, transform: &TransForm) -> bool {
-        mino.shape.iter().enumerate().all(|(mino_y, line)| {
-            let y = transform.y + mino_y;
-            line.iter().enumerate().all(|(mino_x, &b)| {
+        mino.shape
+            .coordinates()
+            .into_iter()
+            .all(|(mino_x, mino_y, b)| {
                 let x = transform.x + mino_x;
+                let y = transform.y + mino_y;
                 !(self.is_wall(x, y) && b)
             })
-        })
     }
 
     fn put_mino(&mut self, mino: Mino, transform: TransForm) {
         mino.rotated(&transform.rotation)
             .shape
-            .iter()
-            .enumerate()
-            .for_each(|(mino_y, line)| {
+            .coordinates()
+            .into_iter()
+            .for_each(|(mino_x, mino_y, mino_b)| {
+                let x = transform.x + mino_x;
                 let y = transform.y + mino_y;
-                line.iter().enumerate().for_each(|(mino_x, &b)| {
-                    let x = transform.x + mino_x;
-                    self.shape.put_on(x, y, b);
-                });
+                self.shape.put_on(x, y, mino_b);
             });
         self.mino_transforms.push((mino, transform));
     }
@@ -163,16 +162,14 @@ impl Board {
         for (mino, transform) in &self.mino_transforms {
             mino.rotated(&transform.rotation)
                 .shape
-                .iter()
-                .enumerate()
-                .for_each(|(mino_y, line)| {
+                .coordinates()
+                .into_iter()
+                .for_each(|(mino_x, mino_y, mino_b)| {
+                    let x = transform.x + mino_x;
                     let y = transform.y + mino_y;
-                    line.iter().enumerate().for_each(|(mino_x, &b)| {
-                        let x = transform.x + mino_x;
-                        if b {
-                            char_matrix[y][x] = mino.name;
-                        }
-                    });
+                    if mino_b {
+                        char_matrix[y][x] = mino.name;
+                    }
                 });
         }
         char_matrix
@@ -201,7 +198,7 @@ enum Rotation {
 #[derive(Deserialize, Clone, PartialEq, Eq, Debug)]
 struct Mino {
     name: char,
-    shape: Vec<Vec<bool>>,
+    shape: Shape,
 }
 
 #[derive(Deserialize, Clone, PartialEq, Eq, Debug)]
@@ -211,6 +208,7 @@ impl Shape {
     fn from_str(s: &str) -> Self {
         Self(
             s.lines()
+                .filter(|line| !line.is_empty())
                 .map(|line| line.chars().map(|c| c != '.').collect::<Vec<bool>>())
                 .collect(),
         )
@@ -240,45 +238,45 @@ impl Shape {
 
 impl Mino {
     fn height(&self) -> usize {
-        self.shape.len()
+        self.shape.height()
     }
     fn width(&self) -> usize {
-        self.shape[0].len()
+        self.shape.width()
     }
     fn rotated(&self, rotation: &Rotation) -> Self {
-        let new_shape = match rotation {
+        let new_raw_shape = match rotation {
             Rotation::Neutral => self.shape.clone(),
             Rotation::Left => {
                 let mut right_shape = vec![vec![false; self.height()]; self.width()];
                 for y in 0..self.height() {
                     for x in 0..self.width() {
-                        right_shape[self.width() - x - 1][y] = self.shape[y][x];
+                        right_shape[self.width() - x - 1][y] = self.shape.is_wall(x, y);
                     }
                 }
-                right_shape
+                Shape(right_shape)
             }
             Rotation::Right => {
                 let mut left_shape = vec![vec![false; self.height()]; self.width()];
                 for y in 0..self.height() {
                     for x in 0..self.width() {
-                        left_shape[x][self.height() - y - 1] = self.shape[y][x];
+                        left_shape[x][self.height() - y - 1] = self.shape.is_wall(x, y);
                     }
                 }
-                left_shape
+                Shape(left_shape)
             }
             Rotation::OneEighty => {
                 let mut one_eighty_shape = vec![vec![false; self.width()]; self.height()];
                 for y in 0..self.height() {
                     for x in 0..self.width() {
                         one_eighty_shape[self.height() - y - 1][self.width() - x - 1] =
-                            self.shape[y][x];
+                            self.shape.is_wall(x, y);
                     }
                 }
-                one_eighty_shape
+                Shape(one_eighty_shape)
             }
         };
         Self {
-            shape: new_shape,
+            shape: new_raw_shape,
             name: self.name,
         }
     }
@@ -306,11 +304,7 @@ impl Mino {
         let name = cs.into_iter().collect::<Vec<char>>()[0];
         Self {
             name,
-            shape: s
-                .lines()
-                .filter(|l| !l.is_empty())
-                .map(|l| l.chars().map(|c| c != '.').collect())
-                .collect(),
+            shape: Shape::from_str(s),
         }
     }
 }
@@ -319,7 +313,7 @@ impl Mino {
 fn test_mino_from_str() {
     let mino = Mino::from_str("###\n.##");
     assert_eq!(
-        mino.shape,
+        mino.shape.0,
         vec![vec![true, true, true], vec![false, true, true]]
     );
     assert_eq!(mino.height(), 2);
@@ -423,12 +417,11 @@ fn test_board_from_text_path() {
 #[test]
 fn test_minos_from_text_path() {
     let minos = Mino::minos_from_text_path("data/minos.txt");
-    println!("readed!");
     for m in &minos {
         {
             let this = &m;
             println!("------------");
-            this.shape.iter().for_each(|bools| {
+            this.shape.0.iter().for_each(|bools| {
                 let line = bools
                     .iter()
                     .map(|&b| if b { this.name } else { '.' })
