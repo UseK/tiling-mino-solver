@@ -15,14 +15,20 @@ fn main() {
     } else {
         ("data/minos.txt".to_string(), "data/board.txt".to_string())
     };
-    let minos: Vec<Mino> = Mino::minos_from_text_path(minos_path);
+    let mut minos: Vec<Mino> = Mino::minos_from_text_path(minos_path);
+    minos.sort_by_key(|m| m.shape.count_wall());
+    minos.reverse();
     let board = Board::from_text_path(board_path);
     let count_mino_walls = minos
         .iter()
         .map(|mino| mino.shape.count_wall())
         .reduce(|a, b| a + b)
         .unwrap();
-    assert_eq!(count_mino_walls, board.shape.count_vacant(), "the number of walls is different");
+    assert_eq!(
+        count_mino_walls,
+        board.shape.count_vacant(),
+        "the number of walls is different"
+    );
     let tiled = board.tile(&minos);
     tiled.unwrap().pretty_print();
 }
@@ -55,6 +61,10 @@ impl Board {
         self.shape.is_wall(x, y)
     }
     fn tile(&self, minos: &[Mino]) -> Option<Self> {
+        if self.mino_transforms.len() == 1 {
+            self.pretty_print();
+            println!("{}", "-".repeat(self.width()));
+        }
         if minos.is_empty() {
             return Some(self.clone());
         }
@@ -157,6 +167,7 @@ impl Board {
                 print!("{}", color.paint(c.to_string()));
             }
         }
+        println!()
     }
     fn pretty_shape(&self) -> String {
         let mut char_matrix = vec![vec!['.'; self.width()]; self.height()];
