@@ -25,6 +25,16 @@ fn main() {
         .map(|mino| mino.shape.count_wall())
         .reduce(|a, b| a + b)
         .unwrap_or_default();
+    let mut count = 0;
+    if count_mino_walls != board.shape.count_vacant() {
+        for m in &minos {
+            m.pretty_print();
+            count += m.shape.count_wall();
+            println!("count wall: {}", count);
+        }
+        board.pretty_print();
+        println!("count vacant: {}", board.shape.count_vacant());
+    }
     assert_eq!(
         count_mino_walls,
         board.shape.count_vacant(),
@@ -164,15 +174,21 @@ impl Board {
                 )
             })
             .collect();
+        let mut n_vacant = 0;
         for c in self.pretty_shape().chars() {
             if c == '#' {
                 print!("{}", Color::Black.on(Color::White).paint(c.to_string()));
+            } else if c == '.' {
+                n_vacant += 1;
+                print!(".");
+            } else if c == '\n' {
+                println!("{}", n_vacant);
             } else {
                 let color = mino_chars.get(&c).unwrap_or(&Color::White);
                 print!("{}", color.paint(c.to_string()));
             }
         }
-        println!()
+        println!("{}", n_vacant);
     }
     fn pretty_shape(&self) -> String {
         let mut char_matrix = vec![vec!['.'; self.width()]; self.height()];
@@ -273,6 +289,17 @@ impl Shape {
 }
 
 impl Mino {
+    fn pretty_print(&self) {
+        println!("------------");
+        self.shape.0.iter().for_each(|bools| {
+            let line = bools
+                .iter()
+                .map(|&b| if b { self.name } else { '.' })
+                .collect::<String>();
+            println!("{}", line)
+        });
+        println!("------------");
+    }
     fn height(&self) -> usize {
         self.shape.height()
     }
