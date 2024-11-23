@@ -24,14 +24,18 @@ fn main() {
         .iter()
         .map(|mino| mino.shape.count_wall())
         .reduce(|a, b| a + b)
-        .unwrap();
+        .unwrap_or_default();
     assert_eq!(
         count_mino_walls,
         board.shape.count_vacant(),
         "the number of walls is different"
     );
     let tiled = board.tile(&minos);
-    tiled.unwrap().pretty_print();
+    if let Some(board) = tiled {
+        board.pretty_print();
+    } else {
+        println!("Can NOT resolved");
+    }
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -356,6 +360,9 @@ impl Mino {
         let mut cs: HashSet<char> = s.trim().chars().collect();
         cs.remove(&'.');
         cs.remove(&'\n');
+        if cs.len() != 1 {
+            println!("{}", s);
+        }
         assert_eq!(cs.len(), 1);
         let name = cs.into_iter().collect::<Vec<char>>()[0];
         Self {
@@ -413,7 +420,8 @@ fn test_mino_rotated_one_eighty() {
 
 #[test]
 fn test_put_mino() {
-    let mut board: Board = serde_json::from_reader(File::open("testdata/board.json").unwrap()).unwrap();
+    let mut board: Board =
+        serde_json::from_reader(File::open("testdata/board.json").unwrap()).unwrap();
     let mino = Mino::from_str(
         "a.
 aa
@@ -439,7 +447,8 @@ aa",
 
 #[test]
 fn test_put_rotated_mino() {
-    let mut board: Board = serde_json::from_reader(File::open("testdata/board.json").unwrap()).unwrap();
+    let mut board: Board =
+        serde_json::from_reader(File::open("testdata/board.json").unwrap()).unwrap();
     let mino = Mino::from_str(
         "a.
 aa
@@ -466,7 +475,8 @@ aa",
 #[test]
 fn test_board_from_text_path() {
     let board = Board::from_text_path("testdata/board.txt");
-    let expected: Board = serde_json::from_reader(File::open("testdata/board.json").unwrap()).unwrap();
+    let expected: Board =
+        serde_json::from_reader(File::open("testdata/board.json").unwrap()).unwrap();
     assert_eq!(board, expected);
 }
 
