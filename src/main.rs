@@ -413,7 +413,7 @@ fn test_mino_rotated_one_eighty() {
 
 #[test]
 fn test_put_mino() {
-    let mut board: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
+    let mut board: Board = serde_json::from_reader(File::open("testdata/board.json").unwrap()).unwrap();
     let mino = Mino::from_str(
         "a.
 aa
@@ -439,7 +439,7 @@ aa",
 
 #[test]
 fn test_put_rotated_mino() {
-    let mut board: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
+    let mut board: Board = serde_json::from_reader(File::open("testdata/board.json").unwrap()).unwrap();
     let mino = Mino::from_str(
         "a.
 aa
@@ -465,14 +465,14 @@ aa",
 
 #[test]
 fn test_board_from_text_path() {
-    let board = Board::from_text_path("data/board.txt");
-    let expected: Board = serde_json::from_reader(File::open("data/board.json").unwrap()).unwrap();
+    let board = Board::from_text_path("testdata/board.txt");
+    let expected: Board = serde_json::from_reader(File::open("testdata/board.json").unwrap()).unwrap();
     assert_eq!(board, expected);
 }
 
 #[test]
 fn test_minos_from_text_path() {
-    let minos = Mino::minos_from_text_path("data/minos.txt");
+    let minos = Mino::minos_from_text_path("testdata/minos.txt");
     for m in &minos {
         {
             let this = &m;

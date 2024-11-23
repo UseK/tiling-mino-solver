@@ -1,0 +1,58 @@
+[
+    {
+        "name": "a",
+        "shape": [
+            [true, false],
+            [true, true],
+            [true, true],
+            [true, true]
+        ]
+    },
+    {
+        "name": "b",
+        "shape": [
+            [true, false],
+            [true, false],
+            [true, true]
+        ]
+    },
+    {
+        "name": "c",
+        "shape": [
+            [false, false, false, true],
+            [true , true , true , true]
+        ]
+    },
+    {
+        "name": "d",
+        "shape": [
+            [false, true, true],
+            [false, true, true],
+            [true , true, true]
+        ]
+    },
+    {
+        "name": "e",
+        "shape": [
+            [true, false],
+            [true, true],
+            [true, true]
+        ]
+    },
+    {
+        "name": "f",
+        "shape": [
+            [true, true],
+            [true, false],
+            [true, false]
+        ]
+    },
+    {
+        "name": "g",
+        "shape": [
+            [true, false, false],
+            [true, false, false],
+            [true, true , true]
+        ]
+    }
+]
