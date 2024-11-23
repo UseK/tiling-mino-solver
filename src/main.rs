@@ -15,7 +15,8 @@ fn main() {
     } else {
         ("data/minos.txt".to_string(), "data/board.txt".to_string())
     };
-    let mut minos: Vec<Mino> = Mino::minos_from_text_path(minos_path);
+
+    let mut minos: Vec<Mino> = Mino::minos_from_path(minos_path);
     minos.sort_by_key(|m| m.shape.count_wall());
     minos.reverse();
     let board = Board::from_text_path(board_path);
@@ -212,13 +213,13 @@ enum Rotation {
     OneEighty,
 }
 
-#[derive(Deserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(Deserialize, Clone, PartialEq, Eq, Debug, PartialOrd, Ord)]
 struct Mino {
     name: char,
     shape: Shape,
 }
 
-#[derive(Deserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(Deserialize, Clone, PartialEq, Eq, Debug, PartialOrd, Ord)]
 struct Shape(Vec<Vec<bool>>);
 
 impl Shape {
@@ -310,6 +311,30 @@ impl Mino {
             shape: new_raw_shape,
             name: self.name,
         }
+    }
+    fn minos_from_path<P>(path: P) -> Vec<Self>
+    where
+        P: AsRef<Path>,
+    {
+        if path.as_ref().is_file() {
+            Self::minos_from_text_path(path)
+        } else if path.as_ref().is_dir() {
+            Self::minos_from_directory_path(path)
+        } else {
+            panic!("Invalid path {:?}", path.as_ref());
+        }
+    }
+
+    fn minos_from_directory_path<P>(directory_path: P) -> Vec<Self>
+    where
+        P: AsRef<Path>,
+    {
+        directory_path
+            .as_ref()
+            .read_dir()
+            .unwrap()
+            .flat_map(|entry| Self::minos_from_text_path(entry.unwrap().path()))
+            .collect()
     }
     fn minos_from_text_path<P>(p: P) -> Vec<Self>
     where
@@ -465,4 +490,36 @@ fn test_minos_from_text_path() {
     let expected: Vec<Mino> =
         serde_json::from_reader(File::open("data/minos.json").unwrap()).unwrap();
     assert_eq!(minos, expected);
+}
+
+#[test]
+fn test_minos_from_path() {
+    use std::collections::BTreeSet;
+    fn assert_eq_as_set<T>(a: &[T], b: &[T])
+    where
+        T: std::cmp::Ord,
+        T: std::fmt::Debug,
+    {
+        let a_set = BTreeSet::from_iter(a.iter());
+        let b_set = BTreeSet::from_iter(b.iter());
+        assert_eq!(a_set, b_set);
+    }
+    let minos = Mino::minos_from_path("data/minos");
+    for m in &minos {
+        {
+            let this = &m;
+            println!("------------");
+            this.shape.0.iter().for_each(|bools| {
+                let line = bools
+                    .iter()
+                    .map(|&b| if b { this.name } else { '.' })
+                    .collect::<String>();
+                println!("{}", line)
+            });
+            println!("------------");
+        };
+    }
+    let expected: Vec<Mino> =
+        serde_json::from_reader(File::open("data/minos.json").unwrap()).unwrap();
+    assert_eq_as_set(&minos, &expected);
 }
