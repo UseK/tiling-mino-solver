@@ -13,7 +13,7 @@ fn main() {
     let (minos_path, board_path) = if args.len() == 3 {
         (args[1].clone(), args[2].clone())
     } else {
-        ("data/minos.txt".to_string(), "data/board.txt".to_string())
+        ("data/minos".to_string(), "data/board.txt".to_string())
     };
 
     let mut minos: Vec<Mino> = Mino::minos_from_path(minos_path);
