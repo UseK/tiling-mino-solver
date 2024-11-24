@@ -76,7 +76,7 @@ impl Board {
         self.shape.is_wall(x, y)
     }
     fn tile(&self, minos: &[Mino]) -> Option<Self> {
-        if self.mino_transforms.len() == 1 {
+        if minos.len() > 8 {
             self.pretty_print();
             println!("{}", "-".repeat(self.width()));
         }
