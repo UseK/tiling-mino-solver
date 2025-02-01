@@ -1,5 +1,6 @@
 use ansi_term::Color;
 use serde::Deserialize;
+use rayon::prelude::*;
 use std::{
     collections::{HashMap, HashSet},
     env,
@@ -88,7 +89,7 @@ impl Board {
         if ts.is_empty() {
             None
         } else {
-            ts.into_iter().find_map(|t| {
+            ts.into_par_iter().find_map_any(|t| {
                 let mut new_board: Board = self.clone();
                 new_board.put_mino(head_mino.clone(), t);
                 new_board.tile(&minos[1..])
