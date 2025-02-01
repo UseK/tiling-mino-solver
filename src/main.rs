@@ -88,15 +88,11 @@ impl Board {
         if ts.is_empty() {
             None
         } else {
-            for t in ts {
-                let mut new_board = self.clone();
+            ts.into_iter().find_map(|t| {
+                let mut new_board: Board = self.clone();
                 new_board.put_mino(head_mino.clone(), t);
-                let tiled = new_board.tile(&minos[1..]);
-                if tiled.is_some() {
-                    return tiled;
-                }
-            }
-            None
+                new_board.tile(&minos[1..])
+            })
         }
     }
     fn search_can_put(&self, mino: &Mino) -> Vec<TransForm> {
