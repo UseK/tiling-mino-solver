@@ -12,6 +12,11 @@ use std::{
 const NUM_THREADS: usize = 8;
 
 fn main() {
+    ThreadPoolBuilder::new()
+        .num_threads(NUM_THREADS)
+        .build_global()
+        .unwrap();
+
     let args: Vec<String> = env::args().collect();
     let (minos_path, board_path) = if args.len() == 3 {
         (args[1].clone(), args[2].clone())
@@ -79,11 +84,6 @@ impl Board {
         self.shape.is_wall(x, y)
     }
     fn tile_parallel(&self, minos: &[Mino]) -> Option<Self> {
-        ThreadPoolBuilder::new()
-            .num_threads(NUM_THREADS)
-            .build_global()
-            .unwrap();
-
         if minos.len() > 8 {
             self.pretty_print();
             println!("{}", "-".repeat(self.width()));
@@ -99,7 +99,7 @@ impl Board {
             ts.into_par_iter().find_map_any(|t| {
                 let mut new_board: Board = self.clone();
                 new_board.put_mino(head_mino.clone(), t);
-                new_board.tile_serial(&minos[1..])
+                new_board.tile_parallel(&minos[1..])
             })
         }
     }
@@ -583,4 +583,18 @@ fn test_minos_from_path() {
     let expected: Vec<Mino> =
         serde_json::from_reader(File::open("data/minos.json").unwrap()).unwrap();
     assert_eq_as_set(&minos, &expected);
+}
+
+#[test]
+fn bench_tile_parallel() {
+    let board = Board::from_text_path("data/bench/board.txt");
+    let minos: Vec<Mino> = Mino::minos_from_path("data/bench/minos.txt");
+    assert!(board.tile_parallel(&minos).is_some());
+}
+
+#[test]
+fn bench_tile_serial() {
+    let board = Board::from_text_path("data/bench/board.txt");
+    let minos: Vec<Mino> = Mino::minos_from_path("data/bench/minos.txt");
+    assert!(board.tile_serial(&minos).is_some());
 }
