@@ -1,6 +1,6 @@
 use ansi_term::Color;
+use rayon::{prelude::*, ThreadPoolBuilder};
 use serde::Deserialize;
-use rayon::prelude::*;
 use std::{
     collections::{HashMap, HashSet},
     env,
@@ -8,6 +8,8 @@ use std::{
     io::Read,
     path::Path,
 };
+
+const NUM_THREADS: usize = 8;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -41,7 +43,7 @@ fn main() {
         board.shape.count_vacant(),
         "the number of walls is different"
     );
-    let tiled = board.tile(&minos);
+    let tiled = board.tile_parallel(&minos);
     if let Some(board) = tiled {
         board.pretty_print();
     } else {
@@ -76,7 +78,12 @@ impl Board {
     fn is_wall(&self, x: usize, y: usize) -> bool {
         self.shape.is_wall(x, y)
     }
-    fn tile(&self, minos: &[Mino]) -> Option<Self> {
+    fn tile_parallel(&self, minos: &[Mino]) -> Option<Self> {
+        ThreadPoolBuilder::new()
+            .num_threads(NUM_THREADS)
+            .build_global()
+            .unwrap();
+
         if minos.len() > 8 {
             self.pretty_print();
             println!("{}", "-".repeat(self.width()));
@@ -92,7 +99,27 @@ impl Board {
             ts.into_par_iter().find_map_any(|t| {
                 let mut new_board: Board = self.clone();
                 new_board.put_mino(head_mino.clone(), t);
-                new_board.tile(&minos[1..])
+                new_board.tile_serial(&minos[1..])
+            })
+        }
+    }
+    fn tile_serial(&self, minos: &[Mino]) -> Option<Self> {
+        if minos.len() > 8 {
+            self.pretty_print();
+            println!("{}", "-".repeat(self.width()));
+        }
+        if minos.is_empty() {
+            return Some(self.clone());
+        }
+        let head_mino = minos[0].clone();
+        let ts = self.search_can_put(&head_mino);
+        if ts.is_empty() {
+            None
+        } else {
+            ts.into_iter().find_map(|t| {
+                let mut new_board: Board = self.clone();
+                new_board.put_mino(head_mino.clone(), t);
+                new_board.tile_serial(&minos[1..])
             })
         }
     }
