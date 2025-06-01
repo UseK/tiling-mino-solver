@@ -6,8 +6,29 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
+#[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct Board {
+    shape: Shape,
+    mino_transforms: Vec<(Mino, TransForm)>,
+}
+
+#[derive(Deserialize, Clone, PartialEq, Eq, Debug)]
+pub struct TransForm {
+    x: usize,
+    y: usize,
+    rotation: Rotation,
+}
+
+#[derive(Deserialize, Clone, PartialEq, Eq, Debug)]
+pub enum Rotation {
+    Neutral,
+    Left,
+    Right,
+    OneEighty,
+}
+
 impl Board {
-    fn from_text_path<P>(path: P) -> Self
+    pub fn from_text_path<P>(path: P) -> Self
     where
         P: AsRef<Path>,
     {
@@ -27,7 +48,7 @@ impl Board {
     fn is_wall(&self, x: usize, y: usize) -> bool {
         self.shape.is_wall(x, y)
     }
-    fn tile_parallel(&self, minos: &[Mino]) -> Option<Self> {
+    pub fn tile_parallel(&self, minos: &[Mino]) -> Option<Self> {
         if minos.len() > 8 {
             self.pretty_print();
             println!("{}", "-".repeat(self.width()));
@@ -127,7 +148,7 @@ impl Board {
         Color::Red,
         Color::Yellow,
     ];
-    fn pretty_print(&self) {
+    pub fn pretty_print(&self) {
         let mino_chars: HashMap<char, Color> = self
             .mino_transforms
             .iter()
@@ -193,57 +214,20 @@ pub struct Mino {
     shape: Shape,
 }
 
-#[derive(Deserialize, Clone, PartialEq, Eq, Debug, PartialOrd, Ord)]
-pub struct Shape(Vec<Vec<bool>>);
-
-impl Shape {
-    fn from_str(s: &str) -> Self {
-        Self(
-            s.lines()
-                .filter(|line| !line.is_empty())
-                .map(|line| line.chars().map(|c| c != '.').collect::<Vec<bool>>())
-                .collect(),
-        )
-    }
-    fn width(&self) -> usize {
-        self.0[0].len()
-    }
-    fn height(&self) -> usize {
-        self.0.len()
-    }
-    fn is_wall(&self, x: usize, y: usize) -> bool {
-        self.0[y][x]
-    }
-    fn count_wall(&self) -> usize {
-        let mut count = 0;
-        for y in 0..self.height() {
-            for x in 0..self.width() {
-                if self.is_wall(x, y) {
-                    count += 1;
-                }
-            }
-        }
-        count
-    }
-    fn count_vacant(&self) -> usize {
-        self.width() * self.height() - self.count_wall()
-    }
-    fn put_on(&mut self, x: usize, y: usize, b: bool) {
-        self.0[y][x] |= b;
-    }
-    fn coordinates(&self) -> Vec<(usize, usize, bool)> {
-        let mut vs = vec![];
-        for y in 0..self.height() {
-            for x in 0..self.width() {
-                vs.push((x, y, self.is_wall(x, y)))
-            }
-        }
-        vs
-    }
-}
-
 impl Mino {
-    fn pretty_print(&self) {
+    pub fn minos_from_path<P>(path: P) -> Vec<Self>
+    where
+        P: AsRef<Path>,
+    {
+        if path.as_ref().is_file() {
+            Self::minos_from_text_path(path)
+        } else if path.as_ref().is_dir() {
+            Self::minos_from_directory_path(path)
+        } else {
+            panic!("Invalid path {:?}", path.as_ref());
+        }
+    }
+    pub fn pretty_print(&self) {
         println!("------------");
         self.shape.0.iter().for_each(|bools| {
             let line = bools
@@ -253,6 +237,9 @@ impl Mino {
             println!("{}", line)
         });
         println!("------------");
+    }
+    pub fn count_wall(&self) -> usize {
+        self.shape.count_wall()
     }
     fn height(&self) -> usize {
         self.shape.height()
@@ -297,19 +284,6 @@ impl Mino {
             name: self.name,
         }
     }
-    pub fn minos_from_path<P>(path: P) -> Vec<Self>
-    where
-        P: AsRef<Path>,
-    {
-        if path.as_ref().is_file() {
-            Self::minos_from_text_path(path)
-        } else if path.as_ref().is_dir() {
-            Self::minos_from_directory_path(path)
-        } else {
-            panic!("Invalid path {:?}", path.as_ref());
-        }
-    }
-
     fn minos_from_directory_path<P>(directory_path: P) -> Vec<Self>
     where
         P: AsRef<Path>,
@@ -353,23 +327,7 @@ impl Mino {
     }
 }
 
-pub const NUM_THREADS: usize = 8;
-
-pub fn solve(minos_path: String, board_path: String) {
-    let mut minos: Vec<Mino> = Mino::minos_from_path(minos_path);
-    minos.sort_by_key(|m| m.shape.count_wall());
-    minos.reverse();
-    let board = Board::from_text_path(board_path);
-    check_wall_count(&minos, &board);
-    let tiled = board.tile_parallel(&minos);
-    if let Some(board) = tiled {
-        board.pretty_print();
-    } else {
-        println!("Can NOT resolved");
-    }
-}
-
-fn check_wall_count(minos: &Vec<Mino>, board: &Board) {
+pub fn check_wall_count(minos: &Vec<Mino>, board: &Board) {
     let count_mino_walls = minos
         .iter()
         .map(|mino| mino.shape.count_wall())
@@ -390,27 +348,6 @@ fn check_wall_count(minos: &Vec<Mino>, board: &Board) {
         board.shape.count_vacant(),
         "the number of walls is different"
     );
-}
-
-#[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
-struct Board {
-    shape: Shape,
-    mino_transforms: Vec<(Mino, TransForm)>,
-}
-
-#[derive(Deserialize, Clone, PartialEq, Eq, Debug)]
-struct TransForm {
-    x: usize,
-    y: usize,
-    rotation: Rotation,
-}
-
-#[derive(Deserialize, Clone, PartialEq, Eq, Debug)]
-enum Rotation {
-    Neutral,
-    Left,
-    Right,
-    OneEighty,
 }
 
 #[test]
@@ -541,6 +478,55 @@ fn test_minos_from_text_path() {
     let expected: Vec<Mino> =
         serde_json::from_reader(File::open("data/minos.json").unwrap()).unwrap();
     assert_eq!(minos, expected);
+}
+
+#[derive(Deserialize, Clone, PartialEq, Eq, Debug, PartialOrd, Ord)]
+pub struct Shape(Vec<Vec<bool>>);
+
+impl Shape {
+    fn from_str(s: &str) -> Self {
+        Self(
+            s.lines()
+                .filter(|line| !line.is_empty())
+                .map(|line| line.chars().map(|c| c != '.').collect::<Vec<bool>>())
+                .collect(),
+        )
+    }
+    fn width(&self) -> usize {
+        self.0[0].len()
+    }
+    fn height(&self) -> usize {
+        self.0.len()
+    }
+    fn is_wall(&self, x: usize, y: usize) -> bool {
+        self.0[y][x]
+    }
+    fn count_wall(&self) -> usize {
+        let mut count = 0;
+        for y in 0..self.height() {
+            for x in 0..self.width() {
+                if self.is_wall(x, y) {
+                    count += 1;
+                }
+            }
+        }
+        count
+    }
+    fn count_vacant(&self) -> usize {
+        self.width() * self.height() - self.count_wall()
+    }
+    fn put_on(&mut self, x: usize, y: usize, b: bool) {
+        self.0[y][x] |= b;
+    }
+    fn coordinates(&self) -> Vec<(usize, usize, bool)> {
+        let mut vs = vec![];
+        for y in 0..self.height() {
+            for x in 0..self.width() {
+                vs.push((x, y, self.is_wall(x, y)))
+            }
+        }
+        vs
+    }
 }
 
 #[test]

@@ -1,6 +1,8 @@
 use rayon::ThreadPoolBuilder;
 use std::env;
-use tiling_mino_slover::NUM_THREADS;
+use tiling_mino_slover::{check_wall_count, Board, Mino};
+
+pub const NUM_THREADS: usize = 8;
 
 fn main() {
     ThreadPoolBuilder::new()
@@ -13,5 +15,19 @@ fn main() {
     } else {
         ("data/minos".to_string(), "data/board.txt".to_string())
     };
-    tiling_mino_slover::solve(minos_path, board_path);
+    solve(minos_path, board_path);
+}
+
+pub fn solve(minos_path: String, board_path: String) {
+    let mut minos: Vec<Mino> = Mino::minos_from_path(minos_path);
+    minos.sort_by_key(|m| m.count_wall());
+    minos.reverse();
+    let board = Board::from_text_path(board_path);
+    check_wall_count(&minos, &board);
+    let tiled = board.tile_parallel(&minos);
+    if let Some(board) = tiled {
+        board.pretty_print();
+    } else {
+        println!("Can NOT resolved");
+    }
 }
