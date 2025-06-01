@@ -518,6 +518,9 @@ impl Shape {
     fn put_on(&mut self, x: usize, y: usize, b: bool) {
         self.0[y][x] |= b;
     }
+    pub fn toggle(&mut self, x: usize, y: usize) {
+        self.0[y][x] = !self.0[y][x];
+    }
     fn coordinates(&self) -> Vec<(usize, usize, bool)> {
         let mut vs = vec![];
         for y in 0..self.height() {
@@ -573,4 +576,24 @@ fn bench_tile_serial() {
     let board = Board::from_text_path("data/bench/board.txt");
     let minos: Vec<Mino> = Mino::minos_from_path("data/bench/minos.txt");
     assert!(board.tile_serial(&minos).is_some());
+}
+
+#[test]
+fn test_shape_toggle() {
+    let mut shape = Shape::from_str("##\n.#");
+    assert_eq!(shape.is_wall(0, 0), true);
+    assert_eq!(shape.is_wall(1, 0), true);
+    assert_eq!(shape.is_wall(0, 1), false);
+    assert_eq!(shape.is_wall(1, 1), true);
+    
+    shape.toggle(0, 1);
+    assert_eq!(shape.is_wall(0, 0), true);
+    assert_eq!(shape.is_wall(1, 0), true);
+    assert_eq!(shape.is_wall(0, 1), true);
+    assert_eq!(shape.is_wall(1, 1), true);
+    shape.toggle(0, 0);
+    assert_eq!(shape.is_wall(0, 0), false);
+    assert_eq!(shape.is_wall(1, 0), true);
+    assert_eq!(shape.is_wall(0, 1), true);
+    assert_eq!(shape.is_wall(1, 1), true);
 }
