@@ -142,7 +142,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tiling-mino-slover"
+name = "tiling-mino-solver"
 version = "0.2.0"
 dependencies = [
  "ansi_term",

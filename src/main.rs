@@ -1,6 +1,6 @@
 use rayon::ThreadPoolBuilder;
 use std::env;
-use tiling_mino_slover::{Board, Mino, check_wall_count};
+use tiling_mino_solver::{Board, Mino, check_wall_count};
 
 pub const NUM_THREADS: usize = 8;
 
