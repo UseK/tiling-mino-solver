@@ -31,16 +31,19 @@ pub enum Rotation {
 }
 
 impl Board {
+    pub fn new(shape: Shape) -> Self {
+        Self {
+            shape,
+            mino_transforms: vec![],
+        }
+    }
     pub fn from_text_path<P>(path: P) -> Result<Self, String>
     where
         P: AsRef<Path>,
     {
         let mut buf = "".to_string();
         File::open(path).unwrap().read_to_string(&mut buf).unwrap();
-        Ok(Self {
-            shape: Shape::from_str(&buf)?,
-            mino_transforms: vec![],
-        })
+        Ok(Self::new(Shape::from_str(&buf)?))
     }
     pub fn height(&self) -> usize {
         self.shape.height()
@@ -213,11 +216,14 @@ impl Board {
 
 #[derive(Deserialize, Clone, PartialEq, Eq, Debug, PartialOrd, Ord)]
 pub struct Mino {
-    name: char,
-    shape: Shape,
+    pub name: char,
+    pub shape: Shape,
 }
 
 impl Mino {
+    pub fn new(name: char, shape: Shape) -> Self {
+        Self { name, shape }
+    }
     pub fn minos_from_path<P>(path: P) -> Result<Vec<Self>, String>
     where
         P: AsRef<Path>,
@@ -499,6 +505,9 @@ fn test_minos_from_text_path() {
 pub struct Shape(Vec<Vec<bool>>);
 
 impl Shape {
+    pub fn new(vec: Vec<Vec<bool>>) -> Self {
+        Self(vec)
+    }
     pub fn width(&self) -> usize {
         self.0[0].len()
     }
@@ -615,4 +624,11 @@ fn test_shape_toggle() {
     assert_eq!(shape.is_wall(1, 0), true);
     assert_eq!(shape.is_wall(0, 1), true);
     assert_eq!(shape.is_wall(1, 1), true);
+}
+
+#[test]
+fn test_shape_new() {
+    let shape = Shape::new(vec![vec![true, true], vec![false, true]]);
+    let expected = Shape::from_str("##\n.#").unwrap();
+    assert_eq!(shape, expected);
 }
