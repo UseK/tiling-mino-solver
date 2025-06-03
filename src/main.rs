@@ -15,14 +15,14 @@ fn main() {
     } else {
         ("data/minos".to_string(), "data/board.txt".to_string())
     };
-    solve(minos_path, board_path);
+    let _ = solve(minos_path, board_path);
 }
 
-pub fn solve(minos_path: String, board_path: String) {
-    let mut minos: Vec<Mino> = Mino::minos_from_path(minos_path);
+pub fn solve(minos_path: String, board_path: String) -> Result<(), String> {
+    let mut minos: Vec<Mino> = Mino::minos_from_path(minos_path)?;
     minos.sort_by_key(|m| m.count_wall());
     minos.reverse();
-    let board = Board::from_text_path(board_path);
+    let board = Board::from_text_path(board_path)?;
     check_wall_count(&minos, &board);
     let tiled = board.tile_parallel(&minos);
     if let Some(board) = tiled {
@@ -30,4 +30,5 @@ pub fn solve(minos_path: String, board_path: String) {
     } else {
         println!("Can NOT resolved");
     }
+    Ok(())
 }

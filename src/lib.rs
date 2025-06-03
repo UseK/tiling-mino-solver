@@ -1,10 +1,13 @@
 use ansi_term::Colour as Color;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+};
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Board {
@@ -28,24 +31,24 @@ pub enum Rotation {
 }
 
 impl Board {
-    pub fn from_text_path<P>(path: P) -> Self
+    pub fn from_text_path<P>(path: P) -> Result<Self, String>
     where
         P: AsRef<Path>,
     {
         let mut buf = "".to_string();
         File::open(path).unwrap().read_to_string(&mut buf).unwrap();
-        Self {
-            shape: Shape::from_str(&buf),
+        Ok(Self {
+            shape: Shape::from_str(&buf)?,
             mino_transforms: vec![],
-        }
+        })
     }
-    fn height(&self) -> usize {
+    pub fn height(&self) -> usize {
         self.shape.height()
     }
-    fn width(&self) -> usize {
+    pub fn width(&self) -> usize {
         self.shape.width()
     }
-    fn is_wall(&self, x: usize, y: usize) -> bool {
+    pub fn is_wall(&self, x: usize, y: usize) -> bool {
         self.shape.is_wall(x, y)
     }
     pub fn tile_parallel(&self, minos: &[Mino]) -> Option<Self> {
@@ -215,16 +218,16 @@ pub struct Mino {
 }
 
 impl Mino {
-    pub fn minos_from_path<P>(path: P) -> Vec<Self>
+    pub fn minos_from_path<P>(path: P) -> Result<Vec<Self>, String>
     where
         P: AsRef<Path>,
     {
         if path.as_ref().is_file() {
-            Self::minos_from_text_path(path)
+            Ok(Self::minos_from_text_path(path)?)
         } else if path.as_ref().is_dir() {
-            Self::minos_from_directory_path(path)
+            Ok(Self::minos_from_directory_path(path))
         } else {
-            panic!("Invalid path {:?}", path.as_ref());
+            Err(format!("Invalid path {:?}", path.as_ref()))
         }
     }
     pub fn pretty_print(&self) {
@@ -292,10 +295,10 @@ impl Mino {
             .as_ref()
             .read_dir()
             .unwrap()
-            .flat_map(|entry| Self::minos_from_text_path(entry.unwrap().path()))
+            .flat_map(|entry| Self::minos_from_text_path(entry.unwrap().path()).unwrap())
             .collect()
     }
-    fn minos_from_text_path<P>(p: P) -> Vec<Self>
+    fn minos_from_text_path<P>(p: P) -> Result<Vec<Self>, String>
     where
         P: AsRef<Path>,
     {
@@ -311,7 +314,11 @@ impl Mino {
             })
             .collect()
     }
-    fn from_str(s: &str) -> Self {
+}
+
+impl FromStr for Mino {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut cs: HashSet<char> = s.trim().chars().collect();
         cs.remove(&'.');
         cs.remove(&'\n');
@@ -320,10 +327,10 @@ impl Mino {
         }
         assert_eq!(cs.len(), 1);
         let name = cs.into_iter().collect::<Vec<char>>()[0];
-        Self {
+        Ok(Self {
             name,
-            shape: Shape::from_str(s),
-        }
+            shape: Shape::from_str(s)?,
+        })
     }
 }
 
@@ -352,7 +359,7 @@ pub fn check_wall_count(minos: &Vec<Mino>, board: &Board) {
 
 #[test]
 fn test_mino_from_str() {
-    let mino = Mino::from_str("###\n.##");
+    let mino = Mino::from_str("###\n.##").unwrap();
     assert_eq!(
         mino.shape.0,
         vec![vec![true, true, true], vec![false, true, true]]
@@ -365,34 +372,40 @@ fn test_mino_from_str() {
 fn test_mino_rotated_left() {
     // ###
     // ..#
-    let mino = Mino::from_str("###\n..#");
+    let mino = Mino::from_str("###\n..#").unwrap();
     // ##
     // #.
     // #.
-    assert_eq!(mino.rotated(&Rotation::Left), Mino::from_str("##\n#.\n#."));
+    assert_eq!(
+        mino.rotated(&Rotation::Left),
+        Mino::from_str("##\n#.\n#.").unwrap()
+    );
 }
 
 #[test]
 fn test_mino_rotated_right() {
     // ###
     // ..#
-    let mino = Mino::from_str("###\n..#");
+    let mino = Mino::from_str("###\n..#").unwrap();
     // .#
     // .#
     // ##
-    assert_eq!(mino.rotated(&Rotation::Right), Mino::from_str(".#\n.#\n##"));
+    assert_eq!(
+        mino.rotated(&Rotation::Right),
+        Mino::from_str(".#\n.#\n##").unwrap()
+    );
 }
 
 #[test]
 fn test_mino_rotated_one_eighty() {
     // ###
     // ..#
-    let mino = Mino::from_str("###\n..#");
+    let mino = Mino::from_str("###\n..#").unwrap();
     // #..
     // ###
     assert_eq!(
         mino.rotated(&Rotation::OneEighty),
-        Mino::from_str("#..\n###")
+        Mino::from_str("#..\n###").unwrap()
     );
 }
 
@@ -405,7 +418,8 @@ fn test_put_mino() {
 aa
 aa
 aa",
-    );
+    )
+    .unwrap();
     let t = TransForm {
         x: 1,
         y: 1,
@@ -432,7 +446,8 @@ fn test_put_rotated_mino() {
 aa
 aa
 aa",
-    );
+    )
+    .unwrap();
     let t = TransForm {
         x: 1,
         y: 1,
@@ -452,7 +467,7 @@ aa",
 
 #[test]
 fn test_board_from_text_path() {
-    let board = Board::from_text_path("testdata/board.txt");
+    let board = Board::from_text_path("testdata/board.txt").unwrap();
     let expected: Board =
         serde_json::from_reader(File::open("testdata/board.json").unwrap()).unwrap();
     assert_eq!(board, expected);
@@ -460,7 +475,7 @@ fn test_board_from_text_path() {
 
 #[test]
 fn test_minos_from_text_path() {
-    let minos = Mino::minos_from_text_path("testdata/minos.txt");
+    let minos = Mino::minos_from_text_path("testdata/minos.txt").unwrap();
     for m in &minos {
         {
             let this = &m;
@@ -484,24 +499,16 @@ fn test_minos_from_text_path() {
 pub struct Shape(Vec<Vec<bool>>);
 
 impl Shape {
-    fn from_str(s: &str) -> Self {
-        Self(
-            s.lines()
-                .filter(|line| !line.is_empty())
-                .map(|line| line.chars().map(|c| c != '.').collect::<Vec<bool>>())
-                .collect(),
-        )
-    }
-    fn width(&self) -> usize {
+    pub fn width(&self) -> usize {
         self.0[0].len()
     }
-    fn height(&self) -> usize {
+    pub fn height(&self) -> usize {
         self.0.len()
     }
-    fn is_wall(&self, x: usize, y: usize) -> bool {
+    pub fn is_wall(&self, x: usize, y: usize) -> bool {
         self.0[y][x]
     }
-    fn count_wall(&self) -> usize {
+    pub fn count_wall(&self) -> usize {
         let mut count = 0;
         for y in 0..self.height() {
             for x in 0..self.width() {
@@ -512,16 +519,16 @@ impl Shape {
         }
         count
     }
-    fn count_vacant(&self) -> usize {
+    pub fn count_vacant(&self) -> usize {
         self.width() * self.height() - self.count_wall()
     }
-    fn put_on(&mut self, x: usize, y: usize, b: bool) {
+    pub fn put_on(&mut self, x: usize, y: usize, b: bool) {
         self.0[y][x] |= b;
     }
     pub fn toggle(&mut self, x: usize, y: usize) {
         self.0[y][x] = !self.0[y][x];
     }
-    fn coordinates(&self) -> Vec<(usize, usize, bool)> {
+    pub fn coordinates(&self) -> Vec<(usize, usize, bool)> {
         let mut vs = vec![];
         for y in 0..self.height() {
             for x in 0..self.width() {
@@ -529,6 +536,18 @@ impl Shape {
             }
         }
         vs
+    }
+}
+
+impl FromStr for Shape {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(
+            s.lines()
+                .filter(|line| !line.is_empty())
+                .map(|line| line.chars().map(|c| c != '.').collect::<Vec<bool>>())
+                .collect(),
+        ))
     }
 }
 
@@ -544,7 +563,7 @@ fn test_minos_from_path() {
         let b_set = BTreeSet::from_iter(b.iter());
         assert_eq!(a_set, b_set);
     }
-    let minos = Mino::minos_from_path("data/minos");
+    let minos = Mino::minos_from_path("data/minos").unwrap();
     for m in &minos {
         {
             let this = &m;
@@ -566,26 +585,26 @@ fn test_minos_from_path() {
 
 #[test]
 fn bench_tile_parallel() {
-    let board = Board::from_text_path("data/bench/board.txt");
-    let minos: Vec<Mino> = Mino::minos_from_path("data/bench/minos.txt");
+    let board = Board::from_text_path("data/bench/board.txt").unwrap();
+    let minos: Vec<Mino> = Mino::minos_from_path("data/bench/minos.txt").unwrap();
     assert!(board.tile_parallel(&minos).is_some());
 }
 
 #[test]
 fn bench_tile_serial() {
-    let board = Board::from_text_path("data/bench/board.txt");
-    let minos: Vec<Mino> = Mino::minos_from_path("data/bench/minos.txt");
+    let board = Board::from_text_path("data/bench/board.txt").unwrap();
+    let minos: Vec<Mino> = Mino::minos_from_path("data/bench/minos.txt").unwrap();
     assert!(board.tile_serial(&minos).is_some());
 }
 
 #[test]
 fn test_shape_toggle() {
-    let mut shape = Shape::from_str("##\n.#");
+    let mut shape = Shape::from_str("##\n.#").unwrap();
     assert_eq!(shape.is_wall(0, 0), true);
     assert_eq!(shape.is_wall(1, 0), true);
     assert_eq!(shape.is_wall(0, 1), false);
     assert_eq!(shape.is_wall(1, 1), true);
-    
+
     shape.toggle(0, 1);
     assert_eq!(shape.is_wall(0, 0), true);
     assert_eq!(shape.is_wall(1, 0), true);
