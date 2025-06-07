@@ -8,10 +8,11 @@ use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
 };
+pub mod gui;
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Board {
-    shape: Shape,
+    pub shape: Shape,
     mino_transforms: Vec<(Mino, TransForm)>,
 }
 
@@ -123,7 +124,7 @@ impl Board {
         }
         transforms
     }
-    fn can_put(&self, mino: &Mino, transform: &TransForm) -> bool {
+    pub fn can_put(&self, mino: &Mino, transform: &TransForm) -> bool {
         mino.shape
             .coordinates()
             .into_iter()
@@ -134,7 +135,7 @@ impl Board {
             })
     }
 
-    fn put_mino(&mut self, mino: Mino, transform: TransForm) {
+    pub fn put_mino(&mut self, mino: Mino, transform: TransForm) {
         mino.rotated(&transform.rotation)
             .shape
             .coordinates()
@@ -186,7 +187,7 @@ impl Board {
         }
         println!("{}", n_vacant);
     }
-    fn pretty_shape(&self) -> String {
+    pub fn pretty_shape(&self) -> String {
         let mut char_matrix = vec![vec!['.'; self.width()]; self.height()];
         self.shape.coordinates().into_iter().for_each(|(x, y, b)| {
             if b {
