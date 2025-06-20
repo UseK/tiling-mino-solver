@@ -1,4 +1,4 @@
-use ansi_term::Colour as Color;
+use ansi_term::{ANSIGenericStrings, Colour as Color};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
 use std::fs::File;
@@ -8,6 +8,7 @@ use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
 };
+use tracing::info;
 pub mod gui;
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -58,7 +59,7 @@ impl Board {
     pub fn tile_parallel(&self, minos: &[Mino]) -> Option<Self> {
         if minos.len() > 8 {
             self.pretty_print();
-            println!("{}", "-".repeat(self.width()));
+            info!("{}", "-".repeat(self.width()));
         }
         if minos.is_empty() {
             return Some(self.clone());
@@ -79,7 +80,7 @@ impl Board {
     fn tile_serial(&self, minos: &[Mino]) -> Option<Self> {
         if minos.len() > 8 {
             self.pretty_print();
-            println!("{}", "-".repeat(self.width()));
+            info!("{}", "-".repeat(self.width()));
         }
         if minos.is_empty() {
             return Some(self.clone());
@@ -172,20 +173,26 @@ impl Board {
             })
             .collect();
         let mut n_vacant = 0;
+        let mut pp = vec!['\n'.to_string().into()];
         for c in self.pretty_shape().chars() {
             if c == '#' {
-                print!("{}", Color::Black.on(Color::White).paint(c.to_string()));
+                let s = Color::Black.on(Color::White).paint(c.to_string());
+                pp.push(s);
             } else if c == '.' {
                 n_vacant += 1;
-                print!(".");
+                pp.push(".".into());
             } else if c == '\n' {
-                println!("{}", n_vacant);
+                pp.push(n_vacant.to_string().into());
+                pp.push('\n'.to_string().into());
             } else {
                 let color = mino_chars.get(&c).unwrap_or(&Color::White);
-                print!("{}", color.paint(c.to_string()));
+                let s = color.paint(c.to_string());
+                pp.push(s)
             }
         }
-        println!("{}", n_vacant);
+        pp.push(n_vacant.to_string().into());
+        pp.push('\n'.to_string().into());
+        info!("{}", ANSIGenericStrings(&pp));
     }
     pub fn pretty_shape(&self) -> String {
         let mut char_matrix = vec![vec!['.'; self.width()]; self.height()];
@@ -238,15 +245,15 @@ impl Mino {
         }
     }
     pub fn pretty_print(&self) {
-        println!("------------");
+        info!("------------");
         self.shape.0.iter().for_each(|bools| {
             let line = bools
                 .iter()
                 .map(|&b| if b { self.name } else { '.' })
                 .collect::<String>();
-            println!("{}", line)
+            info!("{}", line)
         });
-        println!("------------");
+        info!("------------");
     }
     pub fn count_wall(&self) -> usize {
         self.shape.count_wall()
@@ -330,7 +337,7 @@ impl FromStr for Mino {
         cs.remove(&'.');
         cs.remove(&'\n');
         if cs.len() != 1 {
-            println!("{}", s);
+            info!("{}", s);
         }
         assert_eq!(cs.len(), 1);
         let name = cs.into_iter().collect::<Vec<char>>()[0];
@@ -352,10 +359,10 @@ pub fn check_wall_count(minos: &Vec<Mino>, board: &Board) {
         for m in minos {
             m.pretty_print();
             count += m.shape.count_wall();
-            println!("count wall: {}", count);
+            info!("count wall: {}", count);
         }
         board.pretty_print();
-        println!("count vacant: {}", board.shape.count_vacant());
+        info!("count vacant: {}", board.shape.count_vacant());
     }
     assert_eq!(
         count_mino_walls,
@@ -486,15 +493,15 @@ fn test_minos_from_text_path() {
     for m in &minos {
         {
             let this = &m;
-            println!("------------");
+            info!("------------");
             this.shape.0.iter().for_each(|bools| {
                 let line = bools
                     .iter()
                     .map(|&b| if b { this.name } else { '.' })
                     .collect::<String>();
-                println!("{}", line)
+                info!("{}", line)
             });
-            println!("------------");
+            info!("------------");
         };
     }
     let expected: Vec<Mino> =
@@ -577,15 +584,15 @@ fn test_minos_from_path() {
     for m in &minos {
         {
             let this = &m;
-            println!("------------");
+            info!("------------");
             this.shape.0.iter().for_each(|bools| {
                 let line = bools
                     .iter()
                     .map(|&b| if b { this.name } else { '.' })
                     .collect::<String>();
-                println!("{}", line)
+                info!("{}", line)
             });
-            println!("------------");
+            info!("------------");
         };
     }
     let expected: Vec<Mino> =

@@ -5,6 +5,12 @@ use tiling_mino_solver::{Board, Mino, check_wall_count};
 pub const NUM_THREADS: usize = 8;
 
 fn main() {
+    tracing_subscriber::fmt()
+        .with_thread_ids(true)
+        .with_thread_names(true)
+        .with_file(true)
+        .with_line_number(true)
+        .init();
     ThreadPoolBuilder::new()
         .num_threads(NUM_THREADS)
         .build_global()
@@ -16,6 +22,7 @@ fn main() {
         ("data/minos".to_string(), "data/board.txt".to_string())
     };
     let _ = solve(minos_path, board_path);
+    tracing::info!("Tiling Mino Solver finished");
 }
 
 pub fn solve(minos_path: String, board_path: String) -> Result<(), String> {
@@ -28,7 +35,7 @@ pub fn solve(minos_path: String, board_path: String) -> Result<(), String> {
     if let Some(board) = tiled {
         board.pretty_print();
     } else {
-        println!("Can NOT resolved");
+        tracing::info!("Can NOT resolved");
     }
     Ok(())
 }
