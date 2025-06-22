@@ -213,7 +213,7 @@ dependencies = [
 
 [[package]]
 name = "tiling-mino-solver"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "ansi_term",
  "rayon",
