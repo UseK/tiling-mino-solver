@@ -32,6 +32,33 @@ pub enum Rotation {
     OneEighty,
 }
 
+#[derive(Deserialize, Clone, PartialEq, Eq, Debug)]
+pub enum CellState {
+    Wall,
+    Vacant,
+    Occupied(char),
+}
+
+impl From<char> for CellState {
+    fn from(c: char) -> Self {
+        match c {
+            '#' => CellState::Wall,
+            '.' => CellState::Vacant,
+            _ => CellState::Occupied(c),
+        }
+    }
+}
+
+impl From<CellState> for char {
+    fn from(cs: CellState) -> Self {
+        match cs {
+            CellState::Wall => '#',
+            CellState::Vacant => '.',
+            CellState::Occupied(c) => c,
+        }
+    }
+}
+
 impl Board {
     pub fn new(shape: Shape) -> Self {
         Self {
@@ -45,7 +72,7 @@ impl Board {
     {
         let mut buf = "".to_string();
         File::open(path).unwrap().read_to_string(&mut buf).unwrap();
-        Ok(Self::new(Shape::from_str(&buf)?))
+        Self::from_str(&buf)
     }
     pub fn height(&self) -> usize {
         self.shape.height()
@@ -194,7 +221,7 @@ impl Board {
         pp.push('\n'.to_string().into());
         info!("{}", ANSIGenericStrings(&pp));
     }
-    pub fn pretty_shape(&self) -> String {
+    pub fn char_matrix(&self) -> Vec<Vec<char>> {
         let mut char_matrix = vec![vec!['.'; self.width()]; self.height()];
         self.shape.coordinates().into_iter().for_each(|(x, y, b)| {
             if b {
@@ -215,10 +242,39 @@ impl Board {
                 });
         }
         char_matrix
+    }
+    pub fn cell_state_matrix(&self) -> Vec<Vec<CellState>> {
+        self.char_matrix()
+            .iter()
+            .map(|cs| {
+                cs.iter()
+                    .map(|&c| CellState::from(c))
+                    .collect::<Vec<CellState>>()
+            })
+            .collect::<Vec<Vec<CellState>>>()
+    }
+    pub fn pretty_shape(&self) -> String {
+        self.char_matrix()
             .iter()
             .map(|cs| cs.iter().collect::<String>())
             .collect::<Vec<String>>()
             .join("\n")
+    }
+}
+
+impl FromStr for Board {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.chars().any(|c| c != '.' && c != '#' && c != '\n') {
+            return Err(format!(
+                "'.' or '#' can be used for board initialization. Building board failed for '{}'",
+                s,
+            ));
+        };
+        Ok(Self {
+            shape: Shape::from_str(s)?,
+            mino_transforms: vec![],
+        })
     }
 }
 
@@ -477,6 +533,47 @@ aa",
 #...###";
     board.put_mino(mino, t);
     assert_eq!(board.pretty_shape(), expected);
+}
+
+#[test]
+fn test_board_from_str_when_invalid() {
+    let s = "aaaa\n#.#.\n";
+    let result = Board::from_str(s);
+    assert!(result.is_err());
+    assert_eq!(
+        result.unwrap_err(),
+        "'.' or '#' can be used for board initialization. Building board failed for 'aaaa\n#.#.\n'"
+    );
+}
+
+#[test]
+fn test_char_matrix() {
+    let s = "###.\n#.#.";
+    let board = Board::from_str(s).unwrap();
+    let expected_0 = vec!['#', '#', '#', '.'];
+    let expected_1 = vec!['#', '.', '#', '.'];
+    assert_eq!(board.char_matrix()[0], expected_0);
+    assert_eq!(board.char_matrix()[1], expected_1);
+}
+
+#[test]
+fn test_cell_state_matrix() {
+    let s = "###.\n..##";
+    let board = Board::from_str(s).unwrap();
+    let expected_0 = vec![
+        CellState::Wall,
+        CellState::Wall,
+        CellState::Wall,
+        CellState::Vacant,
+    ];
+    let expected_1 = vec![
+        CellState::Vacant,
+        CellState::Vacant,
+        CellState::Wall,
+        CellState::Wall,
+    ];
+    assert_eq!(board.cell_state_matrix()[0], expected_0);
+    assert_eq!(board.cell_state_matrix()[1], expected_1);
 }
 
 #[test]
