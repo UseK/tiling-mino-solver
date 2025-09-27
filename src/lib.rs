@@ -614,7 +614,7 @@ impl Shape {
         Self(vec)
     }
     pub fn width(&self) -> usize {
-        self.0[0].len()
+        self.0.first().map_or(0, |row| row.len())
     }
     pub fn height(&self) -> usize {
         self.0.len()
@@ -736,4 +736,24 @@ fn test_shape_new() {
     let shape = Shape::new(vec![vec![true, true], vec![false, true]]);
     let expected = Shape::from_str("##\n.#").unwrap();
     assert_eq!(shape, expected);
+}
+
+#[test]
+fn test_empty_shape() {
+    let shape: Shape = "".parse().unwrap();
+    assert_eq!(shape.width(), 0);
+    assert_eq!(shape.height(), 0);
+    assert_eq!(shape.count_wall(), 0);
+    assert_eq!(shape.count_vacant(), 0);
+    assert_eq!(shape.coordinates(), vec![]);
+}
+
+#[test]
+fn test_empty_row_shape() {
+    let shape: Shape = Shape::new(vec![vec![]; 3]);
+    assert_eq!(shape.width(), 0);
+    assert_eq!(shape.height(), 3);
+    assert_eq!(shape.count_wall(), 0);
+    assert_eq!(shape.count_vacant(), 0);
+    assert_eq!(shape.coordinates(), vec![]);
 }
