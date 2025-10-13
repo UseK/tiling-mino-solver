@@ -1,7 +1,7 @@
 use ansi_term::{ANSIGenericStrings, Colour as Color};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::Read;
 use std::path::Path;
 use std::{
@@ -70,8 +70,7 @@ impl Board {
     where
         P: AsRef<Path>,
     {
-        let mut buf = "".to_string();
-        File::open(path).unwrap().read_to_string(&mut buf).unwrap();
+        let buf = fs::read_to_string(path).map_err(|e| e.to_string())?;
         Self::from_str(&buf)
     }
     pub fn height(&self) -> usize {
@@ -368,13 +367,26 @@ impl Mino {
             .flat_map(|entry| Self::minos_from_text_path(entry.unwrap().path()).unwrap())
             .collect()
     }
+    /// Read minos from a text file.
+    /// The format of the text file is as follows:
+    /// Each block is separated by a line containing '-'.
+    /// ```
+    /// 1
+    /// a.
+    /// aa
+    /// aa
+    /// aa
+    /// ------------
+    /// ```
     fn minos_from_text_path<P>(p: P) -> Result<Vec<Self>, String>
     where
         P: AsRef<Path>,
     {
-        let mut buf = "".to_string();
-        File::open(p).unwrap().read_to_string(&mut buf).unwrap();
-        let lines: Vec<String> = buf.lines().map(|s| s.to_string()).collect();
+        let lines: Vec<String> = fs::read_to_string(p)
+            .map_err(|e| e.to_string())?
+            .lines()
+            .map(|s| s.to_string())
+            .collect();
         lines
             .split(|line| line.contains('-'))
             .flat_map(|block| {
