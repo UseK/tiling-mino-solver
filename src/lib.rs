@@ -1,8 +1,7 @@
 use ansi_term::{ANSIGenericStrings, Colour as Color};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
-use std::fs::{self, File};
-use std::io::Read;
+use std::fs;
 use std::path::Path;
 use std::{
     collections::{HashMap, HashSet},
@@ -370,15 +369,7 @@ impl Mino {
     /// Read minos from a text file.
     /// The format of the text file is as follows:
     /// Each block is separated by a line containing '-'.
-    /// ```
-    /// 1
-    /// a.
-    /// aa
-    /// aa
-    /// aa
-    /// ------------
-    /// ```
-    fn minos_from_text_path<P>(p: P) -> Result<Vec<Self>, String>
+    pub fn minos_from_text_path<P>(p: P) -> Result<Vec<Self>, String>
     where
         P: AsRef<Path>,
     {
@@ -387,6 +378,23 @@ impl Mino {
             .lines()
             .map(|s| s.to_string())
             .collect();
+        Self::minos_from_lines(lines)
+    }
+    /// ```
+    /// let lines = vec![
+    ///     "1",
+    ///     "a.",
+    ///     "aa",
+    ///     "aa",
+    ///     "aa",
+    ///     "------------",
+    ///     "2",
+    ///     "bb.",
+    ///     "bbb",
+    /// ];
+    /// let minos = tiling_mino_solver::Mino::minos_from_lines(lines.iter().map(|s| s.to_string()).collect()).unwrap();
+    /// ```
+    pub fn minos_from_lines(lines: Vec<String>) -> Result<Vec<Mino>, String> {
         lines
             .split(|line| line.contains('-'))
             .flat_map(|block| {
@@ -493,8 +501,7 @@ fn test_mino_rotated_one_eighty() {
 
 #[test]
 fn test_put_mino() {
-    let mut board: Board =
-        serde_json::from_reader(File::open("testdata/board.json").unwrap()).unwrap();
+    let mut board = Board::from_text_path("testdata/board.txt").unwrap();
     let mino = Mino::from_str(
         "a.
 aa
@@ -521,8 +528,7 @@ aa",
 
 #[test]
 fn test_put_rotated_mino() {
-    let mut board: Board =
-        serde_json::from_reader(File::open("testdata/board.json").unwrap()).unwrap();
+    let mut board = Board::from_text_path("testdata/board.txt").unwrap();
     let mino = Mino::from_str(
         "a.
 aa
@@ -591,13 +597,13 @@ fn test_cell_state_matrix() {
 #[test]
 fn test_board_from_text_path() {
     let board = Board::from_text_path("testdata/board.txt").unwrap();
-    let expected: Board =
-        serde_json::from_reader(File::open("testdata/board.json").unwrap()).unwrap();
+    let expected = Board::from_text_path("testdata/board.txt").unwrap();
     assert_eq!(board, expected);
 }
 
 #[test]
 fn test_minos_from_text_path() {
+    use std::fs::File;
     let minos = Mino::minos_from_text_path("testdata/minos.txt").unwrap();
     for m in &minos {
         {
@@ -680,6 +686,7 @@ impl FromStr for Shape {
 #[test]
 fn test_minos_from_path() {
     use std::collections::BTreeSet;
+    use std::fs::File;
     fn assert_eq_as_set<T>(a: &[T], b: &[T])
     where
         T: std::cmp::Ord,
