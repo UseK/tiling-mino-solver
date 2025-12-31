@@ -84,7 +84,7 @@ impl Board {
     pub fn tile_parallel(&self, minos: &[Mino]) -> Option<Self> {
         if minos.len() > 8 {
             self.pretty_print();
-            info!("{}", "-".repeat(self.width()));
+            println!("{}", "-".repeat(self.width()));
         }
         if minos.is_empty() {
             return Some(self.clone());
@@ -198,7 +198,7 @@ impl Board {
             })
             .collect();
         let mut n_vacant = 0;
-        let mut pp = vec!['\n'.to_string().into()];
+        let mut pp = vec![];
         for c in self.pretty_shape().chars() {
             if c == '#' {
                 let s = Color::Black.on(Color::White).paint(c.to_string());
