@@ -216,8 +216,7 @@ impl Board {
             }
         }
         pp.push(n_vacant.to_string().into());
-        pp.push('\n'.to_string().into());
-        info!("{}", AnsiGenericStrings(&pp));
+        println!("{}", AnsiGenericStrings(&pp));
     }
     pub fn char_matrix(&self) -> Vec<Vec<char>> {
         let mut char_matrix = vec![vec!['.'; self.width()]; self.height()];
