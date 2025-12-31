@@ -1,4 +1,4 @@
-use ansi_term::{ANSIGenericStrings, Colour as Color};
+use nu_ansi_term::{AnsiGenericStrings, Color};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
 use std::fs;
@@ -217,7 +217,7 @@ impl Board {
         }
         pp.push(n_vacant.to_string().into());
         pp.push('\n'.to_string().into());
-        info!("{}", ANSIGenericStrings(&pp));
+        info!("{}", AnsiGenericStrings(&pp));
     }
     pub fn char_matrix(&self) -> Vec<Vec<char>> {
         let mut char_matrix = vec![vec!['.'; self.width()]; self.height()];
