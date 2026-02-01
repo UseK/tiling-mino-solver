@@ -197,7 +197,7 @@ dependencies = [
 
 [[package]]
 name = "tiling-mino-solver"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "nu-ansi-term",
  "rayon",
