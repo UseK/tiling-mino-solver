@@ -653,6 +653,35 @@ impl Shape {
     pub fn count_vacant(&self) -> usize {
         self.width() * self.height() - self.count_wall()
     }
+    ///
+    /// ```
+    /// use tiling_mino_solver::Shape;
+    /// use std::str::FromStr;
+    /// let mut shape = Shape::from_str("....\n.##.\n.##.\n....").unwrap();
+    /// shape.trim();
+    /// assert_eq!(shape, Shape::from_str("##\n##").unwrap());
+    /// ```
+    pub fn trim(&mut self) {
+        while self.0.first().is_some_and(|row| row.iter().all(|&b| !b)) {
+            self.0.remove(0);
+        }
+        while self.0.last().is_some_and(|row| row.iter().all(|&b| !b)) {
+            self.0.pop();
+        }
+        if self.0.is_empty() {
+            return;
+        }
+        while self.0.iter().all(|row| row.first().is_some_and(|&b| !b)) {
+            for row in &mut self.0 {
+                row.remove(0);
+            }
+        }
+        while self.0.iter().all(|row| row.last().is_some_and(|&b| !b)) {
+            for row in &mut self.0 {
+                row.pop();
+            }
+        }
+    }
     pub fn put_on(&mut self, x: usize, y: usize, b: bool) {
         self.0[y][x] |= b;
     }
@@ -774,4 +803,41 @@ fn test_empty_row_shape() {
     assert_eq!(shape.count_wall(), 0);
     assert_eq!(shape.count_vacant(), 0);
     assert_eq!(shape.coordinates(), vec![]);
+}
+
+#[test]
+fn test_empty_trim() {
+    let mut shape: Shape = Shape::new(vec![vec![]; 3]);
+    shape.trim();
+    assert_eq!(shape.width(), 0);
+    assert_eq!(shape.height(), 0);
+    assert_eq!(shape.count_wall(), 0);
+    assert_eq!(shape.count_vacant(), 0);
+    assert_eq!(shape.coordinates(), vec![]);
+}
+
+#[test]
+fn test_empty_str_trim() {
+    let mut shape: Shape = Shape::from_str("...\n...").unwrap();
+    shape.trim();
+    assert_eq!(shape.width(), 0);
+    assert_eq!(shape.height(), 0);
+    assert_eq!(shape.count_wall(), 0);
+    assert_eq!(shape.count_vacant(), 0);
+    assert_eq!(shape.coordinates(), vec![]);
+}
+
+#[test]
+fn test_trim() {
+    let mut shape = Shape::from_str(".....\n.##..\n..##.\n.....").unwrap();
+    shape.trim();
+    assert_eq!(shape, Shape::from_str("##.\n.##").unwrap());
+}
+
+#[test]
+fn test_not_needless_trim() {
+    let mut shape = Shape::from_str("#....\n.##..\n..##.\n....#").unwrap();
+    let expected = shape.clone();
+    shape.trim();
+    assert_eq!(shape, expected);
 }
